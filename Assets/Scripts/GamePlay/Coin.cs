@@ -24,9 +24,9 @@ public class Coin : MonoBehaviour
         if (r == null) return;
         switch (type)
         {
-            case CoinType.Red: r.material.color = Color.red; break;
-            case CoinType.Blue: r.material.color = Color.blue; break;
-            default: r.material.color = Color.yellow; break;
+            case CoinType.Red: r.material.color = Pal.Gold; break;
+            case CoinType.Blue: r.material.color = Pal.Light; break;
+            default: r.material.color = Pal.Pickup; break;
         }
     }
 
@@ -48,6 +48,7 @@ public class Coin : MonoBehaviour
                 GameManager.Instance.AddBonus();
                 break;
         }
+        Fx.Pickup(transform.position);
         Destroy(gameObject);
     }
 }

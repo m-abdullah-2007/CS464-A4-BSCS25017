@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 
 public class Health : MonoBehaviour
@@ -10,6 +11,9 @@ public class Health : MonoBehaviour
     public int Current => current;
     public int Max => max;
 
+    public event Action<int, int> Damaged;   // (current, max)
+    public event Action<int, int> Healed;
+
     void Awake() => current = max;
 
     public bool TakeDamage(int amount)
@@ -18,6 +22,7 @@ public class Health : MonoBehaviour
         invulnerableUntil = Time.time + iFrames;
         if (shielded) { shielded = false; return false; }
         current -= amount;
+        Damaged?.Invoke(current, max);
         GameManager.Instance.UpdateUI();
         if (current <= 0) GameManager.Instance.PlayerDied();
         return true;
@@ -26,6 +31,7 @@ public class Health : MonoBehaviour
     public void Restore(float protection)
     {
         current = max; invulnerableUntil = Time.time + protection;
+        Healed?.Invoke(current, max);
         GameManager.Instance.UpdateUI();
     }
 }

@@ -1,37 +1,41 @@
-# CS464 Assignment 03 · Muhammad Abdullah · BSCS25017
+# CS464 Assignment 04 · Abdullah · BSCS25017
 
-- **Video (60–120 s):** https://drive.google.com/file/d/1R5p2wKqBxDwoiMldRccwpjL2CZT3rpNh/view?usp=drive_link
-- **Started from:** A new project because there were major differences in both so to reduce the complexity starting from a new project was more suited.
-- **Controls:** WASD or arrow keys; Restart / Next Level buttons on the panels
-- **To win a level:** L1 collect 8 coins · L2 collect 5 coins then reach the goal · L3 collect 10 coins · L4 survive 40 s · L5 collect 12 coins, then reach the exit
+**Video (90-180 s):** https://drive.google.com/file/d/1kvnASCEB8SEGen-BRFZv4a4aGOGpReRS/view?usp=drive_link
 
-## Levels
-| Level | Screenshot | New idea | Combined with |
+<p>
+
+<img src="Docs/A4/hud-16x9.png" width="320" alt="The HUD at 16:9">
+
+<img src="Docs/A4/hud-4x3.png" width="320" alt="The HUD at 4:3">
+
+<img src="Docs/A4/hud-gray.png" width="320" alt="The HUD in grayscale">
+
+</p>
+
+Started from my Assignment 03 repo (history kept). HUD, pause, win and game-over screens are one prefab used in all five levels.
+
+## Settings
+| Part | Setting | Value | Why |
 |---|---|---|---|
-| Level01 | <img src="Docs/a3/level01.png" width="320"> | coins, score, a slow patrolling guard | spikes |
-| Level02 | <img src="Docs/a3/level02.png" width="320"> | crushers with a warning, bounce pad, timer | coins and spikes |
-| Level03 | <img src="Docs/a3/level03.png" width="320"> | guards that chase and give up | doors to hide behind |
-| Level04 | <img src="Docs/a3/level04.png" width="320"> | a wave of crushers, survive mode | shield and magnet |
-| Level05 | <img src="Docs/a3/level05.png" width="320"> | locked exit, 2 lives, chaser waves | fast guards, crushers |
+| A | Harmony · base hue | triadic · 234° | blue-violet base, hazard 350°, pickup 114° |
+| A | Dark · mid · light | #141733 · #7F8BFF · #EEF0FF | panel, player/buttons, text |
+| A | Accents | #C81E3A · #88F27C | hazards, pickups (differ in luminance 0.14 vs 0.70) |
+| A | Score text on its panel | 12.14 : 1 | gold #FFD166 on #141733 |
+| A | Button label on the button | 5.87 : 1 | dark label; white would be about 3.0 |
+| B | Music · SFX groups, as mixed | 0 dB (source 0.5) · 0 dB | music sits under effects |
+| B | Slider at 1 · 0.5 · 0.0001 | 0 · -6.02 · -80 dB | Log10(v) x 20 |
+| C | Guard hum, in Level 1 | Logarithmic · Min 2 · Max 25 | guard is ~1 m wide so Min 2 keeps it full volume only when close; 25 m is where the arena ends |
+| C | Power-up shimmer, in Level 1 | Linear · Min 1 · Max 15 | a short-range cue that fades to silent so you hunt it by ear |
+| C | AudioListener | on the player (ListenerOnPlayer), camera is 19-30 m away |  A far top-down camera hears nothing spatial, so the listener follows the player. |
+| D | unlocked | int · default 1 | only level 1 open on a fresh save |
+| D | best1 … best5 | float · HasKey first | a missing time must not read as 0.0 |
+| D | MusicVolume | float · default 1 | full volume until changed |
 
-## The numbers
-| Number | Value | Why this value |
-|---|---|---|
-| Patrol speed | 2.5 m/s (L3), 3–4 m/s (L5) | well below my run speed, so I can always outrun a guard |
-| Chase range | 6 m, give-up 8 m (L3) | a guard sees down its own corridor but not through door walls; the longer give-up range stops flicker |
-| Knockback | 6, ForceMode.Impulse | one kick that throws me clear of the hazard; steering is off for 0.25 s |
-| I-frames | 1 s | long enough to get clear after a hit, short enough that a hazard still hurts |
-| Power-up duration | 5 s (speed x1.6) | long enough to cross a room, not long enough for the whole level |
+## Answers
+1. **What `Time.timeScale = 0` stops in my game, and what it doesn't:** It freezes physics (FixedUpdate), guard movement, chaser movement, crushers, the level timer, respawn coroutines and Time.time based invulnerability.It does not stop Update, so PlayerController checks PauseMenu.IsPaused before reading input.The lag bar and damage flash use unscaled time and music and effects ignore the pause.World sounds stop through AudioListener.pause.
 
-## Short answers
-**1. Why does a trigger need a Rigidbody on at least one of the two objects?**
-In Unity trigger events fire when at least one of the two colliders is attached to a Rigidbody.If both colliders are plain Unity will not send a trigger.Because my player has a Rigidbody Unity sends trigger events for every collider my player touches, such, as coins, spikes or a kill zone.
+2. **What survives a LoadScene in my game, and how:** SfxPlayer and PersistentMusic stay alive through DontDestroyOnLoad,. Only if a singleton check makes sure there is just one instance. That way, there is never a music player running. PlayerPrefs stays saved on disk, so settings and data persist between loads. Static values like Time.timeScale, AudioListener.pause and PauseMenu.IsPaused also survive. Because of this, the Resume() function runs before every scene load. The LevelLoader resets time after that. The HUD, GameManager and LevelLoader are rebuilt each time a level loads.
 
-**2. Which ForceMode do your knockback and your Part A force use, and why each?**
-My Knockback uses Impulse. Impulse is a kick that is scaled by mass and is applied only once when the hit lands. In Level02 bounce pad uses VelocityChange. VelocityChange is an instant kick that ignores mass so the bounce is the same height every time.
+3. **Why every PlayerPrefs read in my game has a default:** When you clear all PlayerPrefs or start from a clone, there is no key at all. GetInt with no default gives back 0. So nothing would be unlocked.. A missing best time would show up as 0.0 s, a record you could never beat. With defaults you get "unlocked 1" and "volume 1".. Haskey is what decides if a best time is there at all.
 
-**3. What does your code do when a second power-up is picked up while one is running?**
-It refreshes: BoostSpeed stops the coroutine and starts a new one, with the full duration. The timer stays with the player. It continues even after the pickup is destroyed.
-
-**4. Why can `==` fail as an arrival check, and when does it work?**
-Floating-point positions rarely hit a target exactly. The equality operator `==` can stay false forever. The equality check only works after `MoveTowards` because `MoveTowards` snaps the Floating-point positions to the target on the final step. I use a distance check that relies on `arriveDistance`. I set arriveDistance to be larger, than one step.
+4. **An exception a forgotten unsubscribe would throw, and why mine can't:** A static or surviving event might call a destroyed HealthBarBinder, which would throw a MissingReferenceException when it tries to touch its bar after a restart. My events are instance-based on Health and every += in OnEnable has a -= in OnDisable. That cleanup runs when the scene unloads, so no subscriptions remain after the scene is gone.
