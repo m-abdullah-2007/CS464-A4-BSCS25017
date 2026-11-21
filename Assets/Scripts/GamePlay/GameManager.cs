@@ -1,7 +1,5 @@
 using System.Collections;
-using TMPro;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 
 public class GameManager : MonoBehaviour
 {
@@ -17,8 +15,7 @@ public class GameManager : MonoBehaviour
     [SerializeField] float respawnDelay = 0.6f, spawnProtection = 1.5f;
     [SerializeField] Health player;
     [SerializeField] Transform respawnPoint;
-    [SerializeField] TMP_Text scoreText, livesText, timerText;
-    [SerializeField] GameObject winPanel, losePanel;
+    [SerializeField] Hud hud;                        // the HUD prefab's root
 
     int score, bonus;
     string lastScoreLine, lastLivesLine, lastTimerLine;
@@ -26,12 +23,21 @@ public class GameManager : MonoBehaviour
     bool ended;
     bool respawning;
 
-    void Awake() { Instance = this; Time.timeScale = 1f; timeLeft = timeLimit; }
+    public bool Ended => ended;
+
+    void Awake()
+    {
+        Instance = this;
+        Time.timeScale = 1f;
+        AudioListener.pause = false;
+        timeLeft = timeLimit;
+    }
 
     void Start()
     {
-        if (timerText != null) timerText.gameObject.SetActive(timeLimit > 0f);
-        if (scoreText != null) scoreText.gameObject.SetActive(targetScore > 0);
+        hud.SetLevel("Level " + gameObject.scene.buildIndex);
+        hud.ShowTimer(timeLimit > 0f);
+        hud.ShowScore(targetScore > 0);
         SetGoalColor();
         UpdateUI();
     }
@@ -58,11 +64,9 @@ public class GameManager : MonoBehaviour
         if (scoreWins && targetScore > 0 && score >= targetScore) Win();
     }
 
-    // Kept so the Collect-a-thon Coin.cs compiles unchanged.
     public void CollectRedCoin(Vector3 playerPosition) { AddScore(1); }
     public void AddBonus() { bonus++; }
 
-    // Called by GoalZone. Ignored while the exit is still locked.
     public void ReachGoal()
     {
         if (goalNeedsScore && score < targetScore) return;
@@ -72,36 +76,33 @@ public class GameManager : MonoBehaviour
     void SetGoalColor()
     {
         if (goalPad == null || !goalNeedsScore) return;
-        goalPad.material.color = score >= targetScore ? Color.green : Color.red;
+        goalPad.material.color = score >= targetScore ? Pal.Pickup : Pal.Hazard;
     }
 
     public void UpdateUI()
     {
-        if (targetScore > 0) SetIfChanged(scoreText, ref lastScoreLine, ScoreLine());
+        if (targetScore > 0) SetIfChanged(hud.SetScore, ref lastScoreLine, ScoreLine());
         if (player != null)
-            SetIfChanged(livesText, ref lastLivesLine,
-                $"Lives: {lives}   Health: {Mathf.Max(player.Current, 0)} / {player.Max}");
+            SetIfChanged(hud.SetLives, ref lastLivesLine, $"Lives: {lives}");
         if (timeLimit > 0f)
-            SetIfChanged(timerText, ref lastTimerLine,
-                $"{timerLabel}: {Mathf.CeilToInt(timeLeft)}");
+            SetIfChanged(hud.SetTimer, ref lastTimerLine, $"{timerLabel}: {Mathf.CeilToInt(timeLeft)}");
     }
 
     string ScoreLine()
     {
         if (goalNeedsScore)
         {
-            string state = "exit locked";
-            if (score >= targetScore) state = "EXIT OPEN";
+            string state = score >= targetScore ? "EXIT OPEN" : "exit locked";
             return $"Coins: {score} / {targetScore}   {state}";
         }
         if (scoreWins) return $"Score: {score} / {targetScore}";
         return $"Bonus coins: {score} / {targetScore}";
     }
 
-    void SetIfChanged(TMP_Text text, ref string last, string value)
+    void SetIfChanged(System.Action<string> set, ref string last, string value)
     {
-        if (text == null || value == last) return;
-        text.text = value;
+        if (value == last) return;
+        set(value);
         last = value;
     }
 
@@ -110,11 +111,7 @@ public class GameManager : MonoBehaviour
         if (ended || respawning) return;
         lives--;
         UpdateUI();
-        if (lives <= 0)
-        {
-            Lose();
-            return;
-        }
+        if (lives <= 0) { Lose(); return; }
         respawning = true;
         StartCoroutine(Respawn());
     }
@@ -133,8 +130,12 @@ public class GameManager : MonoBehaviour
     {
         if (ended) return;
         ended = true;
-        winPanel.SetActive(true);
-        if (IsLastLevel()) HideNextButton();
+        int level = gameObject.scene.buildIndex;
+        float time = Time.timeSinceLevelLoad;
+        bool best = SaveData.Record(level, time);
+        SaveData.Unlock(level + 1);
+        SfxPlayer.Do(Sfx.Win);
+        hud.ShowWin(time, best, SaveData.GetBest(level));
         Time.timeScale = 0f;
     }
 
@@ -142,36 +143,8 @@ public class GameManager : MonoBehaviour
     {
         if (ended) return;
         ended = true;
-        losePanel.SetActive(true);
+        SfxPlayer.Do(Sfx.Lose);
+        hud.ShowLose();
         Time.timeScale = 0f;
-    }
-
-    public void Restart()
-    {
-        Time.timeScale = 1f;
-        SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
-    }
-
-    // Loads the next scene in Build Settings. Does nothing on the last level,
-    // so it never wraps back to Level01.
-    public void NextLevel()
-    {
-        if (IsLastLevel()) return;
-        Time.timeScale = 1f;
-        SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex + 1);
-    }
-
-    bool IsLastLevel()
-    {
-        return SceneManager.GetActiveScene().buildIndex + 1 >= SceneManager.sceneCountInBuildSettings;
-    }
-
-    // Finds the NextLevelButton by name, including inactive objects inside the
-    // win panel, and hides it. If the name doesn't match, nothing happens.
-    void HideNextButton()
-    {
-        Transform[] all = Object.FindObjectsByType<Transform>(FindObjectsInactive.Include, FindObjectsSortMode.None);
-        foreach (Transform t in all)
-            if (t.name == "NextLevelButton") t.gameObject.SetActive(false);
     }
 }

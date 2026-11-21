@@ -1,70 +1,47 @@
-
+using System.Collections;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
-using System.Collections;
 
+// The only script that loads a scene. Index 0 = MainMenu, 1-5 = levels, 6 = Credits.
 public class LevelLoader : MonoBehaviour
 {
-    [Header("Settings")]
-    [SerializeField] private int creditsIndex = 6;
+    [SerializeField] GameObject loadingPanel;
+    [SerializeField] Image bar;
+    [SerializeField] int creditsIndex = 6;
 
-    [Header("Loading UI")]
-    [SerializeField] private GameObject loadingPanel;
-    [SerializeField] private Image loadingBar;
+    static bool loading;
+
+    void Awake() { loading = false; if (loadingPanel) loadingPanel.SetActive(false); }
 
     public void LoadNext()
     {
-        int current = SceneManager.GetActiveScene().buildIndex;
-
-        if (current == creditsIndex)
-            Go(0);
-        else
-            Go(current + 1);
+        int i = SceneManager.GetActiveScene().buildIndex;
+        Load(i >= creditsIndex ? 0 : i + 1);     // wraps to the menu after Credits
     }
-
-    public void Reload()
-    {
-        Go(SceneManager.GetActiveScene().buildIndex);
-    }
-
-    public void LoadMenu()
-    {
-        Go(0);
-    }
+    public void Reload() => Load(SceneManager.GetActiveScene().buildIndex);
+    public void LoadMenu() => Load(0);
 
     public void Load(int index)
     {
-        Go(index);
+        if (loading) return;
+        Time.timeScale = 1f;                      // statics survive a load: put time back
+        StartCoroutine(Go(index));
     }
 
-    private void Go(int index)
+    IEnumerator Go(int index)
     {
-        Time.timeScale = 1f;
-        StartCoroutine(Run(index));
-    }
-
-    private IEnumerator Run(int index)
-    {
-        loadingPanel.SetActive(true);
-
-        AsyncOperation operation =
-            SceneManager.LoadSceneAsync(index);
-
-        operation.allowSceneActivation = false;
-
-        while (operation.progress < 0.9f)
+        loading = true;
+        if (loadingPanel) loadingPanel.SetActive(true);
+        AsyncOperation op = SceneManager.LoadSceneAsync(index);
+        op.allowSceneActivation = false;
+        while (op.progress < 0.9f)
         {
-            loadingBar.fillAmount =
-                Mathf.Clamp01(operation.progress / 0.9f);
-
+            if (bar) bar.fillAmount = Mathf.Clamp01(op.progress / 0.9f);
             yield return null;
         }
-
-        loadingBar.fillAmount = 1f;
-
-        yield return new WaitForSecondsRealtime(0.2f);
-
-        operation.allowSceneActivation = true;
+        if (bar) bar.fillAmount = 1f;
+        yield return new WaitForSecondsRealtime(0.2f);   // let the bar be seen at 100%
+        op.allowSceneActivation = true;
     }
 }

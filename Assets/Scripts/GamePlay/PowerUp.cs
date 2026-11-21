@@ -19,6 +19,7 @@ public class PowerUp : MonoBehaviour
         else if (other.TryGetComponent(out Magnet magnet))
             magnet.Activate(duration);
 
+        Fx.Pickup(transform.position);
         Destroy(gameObject);
     }
 }
