@@ -1,11 +1,15 @@
 # CS464 Assignment 04 · Abdullah · BSCS25017
 
-**Video (90-180 s):** [YouTube unlisted / Drive link]
+**Video (90-180 s):** https://drive.google.com/file/d/1xArjWc71BQzi2L5B9fXYLfzJJk-5OxCZ/view?usp=sharing
 
 <p>
+
 <img src="Docs/A4/hud-16x9.png" width="320" alt="The HUD at 16:9">
-<img src="Docs/A4/hud-4x3.png" width="240" alt="The HUD at 4:3">
+
+<img src="Docs/A4/hud-4x3.png" width="320" alt="The HUD at 4:3">
+
 <img src="Docs/A4/hud-gray.png" width="320" alt="The HUD in grayscale">
+
 </p>
 
 Started from my Assignment 03 repo (history kept). HUD, pause, win and game-over screens are one prefab used in all five levels.
